@@ -1,320 +1,314 @@
+# RoboCare Monitor
+
+Android companion app for a robotic patient-monitoring system built around an STM32 controller, an HC-05 Bluetooth Classic module, and Firebase Realtime Database.
+
+![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
+![Min SDK](https://img.shields.io/badge/Min%20SDK-24-brightgreen)
+![Target SDK](https://img.shields.io/badge/Target%20SDK-34-blue)
+![Language](https://img.shields.io/badge/Language-Java%208-orange)
+![Backend](https://img.shields.io/badge/Backend-Firebase%20RTDB-FFCA28?logo=firebase)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+RoboCare Monitor receives live vitals from a healthcare robot over Bluetooth, stores patient data in Firebase, and gives caregivers a single mobile interface for monitoring, alerts, patient records, medicine tracking, robot motion control, and TFT display control.
+
 <p align="center">
-  <img src="app/src/main/res/mipmap-hdpi/ic_launcher.webp" width="100" alt="RoboCare Logo"/>
+  <img src="assets/hero-demo.jpg" alt="RoboCare running on a phone beside the robot" width="72%">
 </p>
 
-<h1 align="center">🤖 RoboCare Monitor</h1>
+## Features
 
-<p align="center">
-  <strong>Android companion app for a robotic patient-monitoring system</strong>
-</p>
+### Live patient dashboard
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white" alt="Platform: Android"/>
-  <img src="https://img.shields.io/badge/Min%20SDK-24%20(Nougat)-brightgreen" alt="Min SDK 24"/>
-  <img src="https://img.shields.io/badge/Target%20SDK-34%20(Android%2014)-blue" alt="Target SDK 34"/>
-  <img src="https://img.shields.io/badge/Language-Java%208-orange?logo=java" alt="Java 8"/>
-  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="MIT License"/>
-  <img src="https://img.shields.io/badge/Bluetooth-HC--05%20Classic-2196F3" alt="Bluetooth HC-05"/>
-  <img src="https://img.shields.io/badge/Backend-Firebase%20RTDB-FFCA28?logo=firebase" alt="Firebase"/>
-</p>
+- Displays heart rate, SpO2, respiration, smoke level, medicine timer, alert state, and raw packets.
+- Classifies incoming readings as `Stable`, `Needs Attention`, or `Critical Alert`.
+- Saves the latest reading automatically and allows manual history saves.
 
----
+### Patient and medicine management
 
-An STM32-powered healthcare robot collects real-time vitals — heart rate, SpO₂, respiration, smoke level — via onboard sensors and streams them to this app over **Bluetooth Classic (HC-05)**. The app provides a **live dashboard** with automatic health triage, **medicine & smoke alerts**, full **patient management** with Firebase persistence, **remote motion control** of the robot, and a **TFT Remote** interface for controlling the robot's onboard display — all from a single dark-themed Material Design UI.
+- Add, edit, delete, and select patient records.
+- Assign medicines to individual patients.
+- Mark medicines as active or inactive.
+- Show active prescriptions when the robot raises a medicine alert.
 
----
+### Bluetooth monitoring
 
-## ✨ Features
+- Uses Bluetooth Classic SPP with an HC-05 module.
+- Keeps one shared Bluetooth connection alive through a singleton `BluetoothManager`.
+- Reads newline-terminated packets continuously on a background thread.
+- Posts connection and packet events back to the Android UI thread.
 
-### 📊 Live Dashboard & Health Triage
-- Real-time BPM, SpO₂, respiration rate, smoke level, and medicine timer displayed in a dark-themed card UI
-- **Automatic triage** — vitals are classified as *Stable* 🟢, *Needs Attention* 🟠, or *Critical Alert* 🔴 with colour-coded indicators and explanatory reasons
-- Raw packet display for debugging
+### Alerts
 
-### 🔥 Smoke Detection
-- Raw ADC values mapped to **SAFE** (< 2000), **WARNING** (2000–3000), and **DANGER** (≥ 3000) levels
-- Dismissible visual alert banner when smoke reaches dangerous levels or the STM32 raises a `SMOKE` / `FIRE` alert
-- Dismiss command sent back to the robot to silence the onboard alarm
+- Smoke values are shown as `SAFE`, `WARNING`, or `DANGER`.
+- Medicine alerts show active prescriptions for the selected patient.
+- Smoke and medicine alerts can be dismissed from the app, sending a command back to the robot.
 
-### 💊 Medicine Alerts
-- When the STM32 raises a `MED` alert, the app displays the patient's **active prescriptions** (name, dose, notes) pulled from Firebase
-- One-tap dismiss sends `CMD=MED,ALERT=OFF` back to the robot
-- Timer countdown (0–600 s) visible on dashboard
+### Robot controls
 
-### 👥 Patient Management
-- **Add, edit, and delete** patient records (ID, name, age, room, notes)
-- Patient list with RecyclerView, inline edit/delete buttons with confirmation dialogs
-- Select a patient to enter their live dashboard
-- All data persisted to Firebase Realtime Database
+- Motion control screen with forward, backward, left, right, and stop commands.
+- Phone-control handshake before movement commands are enabled.
+- Safe exit sends stop and returns the robot to line-tracking mode.
 
-### 💊 Medicine Management
-- Assign medicines (name, dose, notes) to each patient
-- Toggle medicines **active / inactive** — only active medicines appear during alerts
-- Full CRUD operations via Firebase
+### TFT remote
 
-### 📜 Reading History
-- Browse and review all saved vitals readings per patient
-- Each reading stored with full timestamp in Firebase
+- Send-only remote for the robot's onboard TFT UI.
+- Main mode buttons for sanitizing, heart-rate, breathing, medicine, temperature, and more.
+- Medicine keypad, vision D-pad, and extended menu controls.
+- Quick actions for motion control, smoke alert dismissal, and medicine alert dismissal.
 
-### 📡 Bluetooth Classic
-- **Singleton `BluetoothManager`** keeps the HC-05 socket alive across activity transitions
-- Continuous background read thread with line-buffered parsing (splits by `\n`, strips `\r`)
-- All callbacks posted to UI thread via `Handler`
-- Audible tone feedback — ascending beep on connect, descending beep on disconnect
-- Status indicator (connected / connecting / disconnected) with colour-coded dot on every screen
+## Screenshots
 
-### 🎮 Motion Control
-- Directional pad — **Forward / Back / Left / Right / Stop**
-- **LINE ↔ PHONE mode handshake** — must explicitly enter phone control before directions are enabled
-- Safe exit sequence — automatically sends `STOP` + `LINE` mode on back press or activity destroy
-- Direction buttons disabled when not in phone control mode or when Bluetooth is disconnected
+### Core app flow
 
-### 🖥️ TFT Remote Control *(New)*
-- **Full remote interface** for the robot's onboard TFT display over Bluetooth
-- **Four switchable panels:**
-  - **Main** — 6 robot mode buttons matching the TFT menu order (Sanitizing, Heart Rate, Breathing, Medicine, Temperature, More)
-  - **Medicine** — numeric keypad (0–9) for timer/dose input, with OK (A), Clear (B), and Back (C) controls
-  - **Vision** — D-pad for camera/vision navigation (`CAM_UP`, `CAM_DOWN`, `CAM_LEFT`, `CAM_RIGHT`) with OK and Exit buttons
-  - **More Menu** — extended modes: Vision, Vein Finder, Stress Test
-- Quick action buttons: smoke alert dismiss, medicine alert dismiss, exit view
-- Direct navigation to Motion Control from within the TFT Remote
-- Send-only interface — does not bind a message listener, only shows connection status
-- All commands follow the `CMD=UI,KEY=X` protocol
+| Home | Patients | Add Patient |
+| --- | --- | --- |
+| <img src="assets/Home.jpg" alt="RoboCare home screen" width="240"> | <img src="assets/Patients.jpg" alt="Patient list screen" width="240"> | <img src="assets/Add_Patient.jpg" alt="Add patient screen" width="240"> |
 
-### ☁️ Firebase Sync
-- Latest reading and full history stored under each patient node
-- Real-time updates to Firebase on every incoming packet
-- Patient and medicine data fully managed through Firebase CRUD
+### Monitoring and Bluetooth
 
----
+| Full Dashboard | Bluetooth Setup |
+| --- | --- |
+| <img src="assets/Full_Dashboard.jpg" alt="Full patient dashboard with health overview" width="300"> | <img src="assets/Bluetooth_Settings.jpg" alt="Bluetooth setup screen" width="300"> |
 
-## 🏗️ Architecture
+### Robot control
 
-```
-com.robot.patientmonitor
-├── activities/
-│   ├── MainActivity              # Home hub — Patients, Bluetooth, Motion, TFT Remote
-│   ├── PatientListActivity       # List, select, edit, delete patients
-│   ├── AddPatientActivity        # Create or edit a patient record
-│   ├── DashboardActivity         # Live vitals dashboard + health triage + alerts
-│   ├── HistoryActivity           # Past readings browser
-│   ├── MedicinesActivity         # Manage patient medicines (CRUD)
-│   ├── BluetoothConnectActivity  # Pair & connect to HC-05
-│   ├── MotionControlActivity     # Remote directional control with LINE/PHONE modes
-│   └── TftRemoteActivity         # Multi-panel TFT display remote control
-├── bluetooth/
-│   └── BluetoothManager          # Singleton — socket, read thread, command TX, audio feedback
-├── data/
-│   ├── AppState                  # In-memory singleton for selected patient & latest reading
-│   └── FirebaseRepository        # All Firebase CRUD operations
-├── models/
-│   ├── Patient                   # Patient POJO
-│   ├── Reading                   # Vitals reading POJO + breath description helper
-│   └── Medicine                  # Medicine POJO
-└── parser/
-    └── PacketParser              # Parses serial packets into Reading objects (fault-tolerant)
+| Motion Control | TFT Remote | More Menu |
+| --- | --- | --- |
+| <img src="assets/Motion_Control.jpg" alt="Motion control screen" width="240"> | <img src="assets/TFT_Remote_1.jpg" alt="TFT remote main screen" width="240"> | <img src="assets/TFT_Remote_2.jpg" alt="TFT remote more menu screen" width="240"> |
+
+| TFT Keypad |
+| --- |
+| <img src="assets/tft-keypad.jpg" alt="TFT remote keypad screen" width="240"> |
+
+
+## Tech Stack
+
+| Area | Technology |
+| --- | --- |
+| Language | Java 8 |
+| Platform | Android |
+| Min SDK | 24 |
+| Target SDK | 34 |
+| UI | AppCompat, ConstraintLayout, Material Components |
+| Backend | Firebase Realtime Database |
+| Bluetooth | Bluetooth Classic SPP, HC-05 |
+| Build | Gradle 8.13, Android Gradle Plugin 8.13.2 |
+
+## Project Structure
+
+```text
+app/src/main/java/com/robot/patientmonitor/
+|-- activities/
+|   |-- MainActivity.java
+|   |-- PatientListActivity.java
+|   |-- AddPatientActivity.java
+|   |-- DashboardActivity.java
+|   |-- HistoryActivity.java
+|   |-- MedicinesActivity.java
+|   |-- BluetoothConnectActivity.java
+|   |-- MotionControlActivity.java
+|   `-- TftRemoteActivity.java
+|-- bluetooth/
+|   `-- BluetoothManager.java
+|-- data/
+|   |-- AppState.java
+|   `-- FirebaseRepository.java
+|-- models/
+|   |-- Patient.java
+|   |-- Reading.java
+|   `-- Medicine.java
+`-- parser/
+    `-- PacketParser.java
 ```
 
----
-
-## 📡 Serial Protocol
-
-The STM32 sends newline-terminated, comma-separated key-value packets over HC-05:
-
-```
-TYPE=VITALS,PATIENT=001,BPM=82,SPO2=97,BREATH=540,SMOKE=120,MED=300,ALERT=NONE\n
-```
-
-| Field     | Type   | Description                                   |
-|-----------|--------|-----------------------------------------------|
-| `TYPE`    | String | Packet type — only `VITALS` is processed      |
-| `PATIENT` | String | Patient ID (falls back to selected patient)   |
-| `BPM`     | int    | Heart rate in beats per minute                |
-| `SPO2`    | int    | Blood oxygen saturation (%)                   |
-| `BREATH`  | int    | Respiration sensor reading                    |
-| `SMOKE`   | int    | MQ-series smoke sensor ADC value              |
-| `MED`     | int    | Medicine timer countdown (0–600 s)            |
-| `ALERT`   | String | Alert flag — `NONE`, `MED`, `SMOKE`, `FIRE`, etc. |
-
-### Commands (App → Robot)
-
-#### Motion Control
-| Command | Purpose |
-|---------|---------|
-| `CMD=MOTION,MODE=PHONE\n` | Switch robot to phone-controlled mode |
-| `CMD=MOTION,MODE=LINE\n`  | Switch robot back to line-tracking mode |
-| `CMD=MOTION,DIR=FWD\n`    | Move forward |
-| `CMD=MOTION,DIR=BACK\n`   | Move backward |
-| `CMD=MOTION,DIR=LEFT\n`   | Turn left |
-| `CMD=MOTION,DIR=RIGHT\n`  | Turn right |
-| `CMD=MOTION,DIR=STOP\n`   | Stop |
-
-#### Alert Dismissal
-| Command | Purpose |
-|---------|---------|
-| `CMD=MED,ALERT=OFF\n`   | Dismiss medicine alert |
-| `CMD=SMOKE,ALERT=OFF\n` | Dismiss smoke alert |
-
-#### TFT UI Control
-| Command | Purpose |
-|---------|---------|
-| `CMD=UI,KEY=1` ... `KEY=8` | Select TFT menu mode (1–8) |
-| `CMD=UI,KEY=0`             | Open "More" submenu |
-| `CMD=UI,KEY=A`             | OK / Confirm |
-| `CMD=UI,KEY=B`             | Clear input |
-| `CMD=UI,KEY=C`             | Back / Return |
-| `CMD=UI,KEY=D`             | Exit current view |
-| `CMD=UI,KEY=CAM_UP`       | Vision D-pad — Up |
-| `CMD=UI,KEY=CAM_DOWN`     | Vision D-pad — Down |
-| `CMD=UI,KEY=CAM_LEFT`     | Vision D-pad — Left |
-| `CMD=UI,KEY=CAM_RIGHT`    | Vision D-pad — Right |
-
----
-
-## 🔧 Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| **Language** | Java 8 |
-| **Min SDK** | 24 (Android 7.0 Nougat) |
-| **Target SDK** | 34 (Android 14) |
-| **UI** | Material Design (Material Components 1.11) |
-| **Backend** | Firebase Realtime Database (BOM 32.7.2) |
-| **Bluetooth** | Bluetooth Classic SPP (HC-05 module) |
-| **Build** | Gradle 8.13 + Android Gradle Plugin 8.13.2 |
-
----
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
-- Android Studio Hedgehog (2023.1) or newer
-- An Android device with Bluetooth Classic support (API 24+)
-- An HC-05 Bluetooth module paired with the device
-- A Firebase project with Realtime Database enabled
+- Android Studio.
+- Android phone or tablet running Android 7.0 or newer.
+- Bluetooth Classic support on the Android device.
+- Paired HC-05 Bluetooth module.
+- Firebase project with Realtime Database enabled.
 
 ### Setup
 
-1. **Clone the repository**
+1. Clone the repository.
+
    ```bash
-   git clone https://github.com/Jasminex6/RoboCare-.git
-   cd RoboCare-
+   git clone https://github.com/Jasminex6/RoboCare-App.git
+   cd RoboCare-App
    ```
 
-2. **Add your Firebase config**
-   - Download `google-services.json` from your [Firebase Console](https://console.firebase.google.com/)
-   - Place it in `app/google-services.json`
-   - See [`app/google-services.json.example`](app/google-services.json.example) for the expected structure
+2. Add Firebase configuration.
 
-3. **Open in Android Studio**
-   - File → Open → select the project root
-   - Let Gradle sync complete
+   Download `google-services.json` from the Firebase Console and place it at:
 
-4. **Pair the HC-05 module**
-   - Go to Android Bluetooth settings and pair with the HC-05 (default PIN: `1234`)
+   ```text
+   app/google-services.json
+   ```
 
-5. **Build & Run**
-   - Connect your Android device via USB
-   - Click **Run ▶** in Android Studio (or `./gradlew installDebug`)
+   The repository includes `app/google-services.json.example` as a template reference.
 
----
+3. Open the project in Android Studio.
 
-## 📱 App Flow
+   Select the project root, let Gradle sync, and confirm that the Android Gradle plugin downloads successfully.
 
+4. Pair the HC-05 module.
+
+   Pair the Android device with the robot's HC-05 module from system Bluetooth settings. Common default PINs are `1234` or `0000`.
+
+5. Build and run.
+
+   Use Android Studio's Run button, or run:
+
+   ```bash
+   ./gradlew installDebug
+   ```
+
+   On Windows:
+
+   ```powershell
+   .\gradlew.bat installDebug
+   ```
+
+## App Flow
+
+```text
+MainActivity
+|-- Patients
+|   |-- Add or edit patient
+|   |-- Delete patient
+|   `-- Select patient
+|       |-- Live dashboard
+|       |-- Medicines
+|       |-- Reading history
+|       `-- Bluetooth setup
+|-- Bluetooth setup
+|-- Motion control
+`-- TFT remote
 ```
-MainActivity (Home)
-├── 📋 Patients → PatientListActivity
-│   ├── ➕ Add Patient → AddPatientActivity
-│   ├── ✏️ Edit Patient → AddPatientActivity (pre-filled)
-│   ├── 🗑️ Delete Patient (confirmation dialog)
-│   └── 👤 Select Patient → DashboardActivity
-│       ├── 📊 Live Vitals (BPM, SpO₂, Breath, Smoke, Med timer)
-│       ├── 🏥 Health Overview (auto-triage)
-│       ├── 💊 Medicine Alert (active prescriptions + dismiss)
-│       ├── 🔥 Smoke Alert (danger level + dismiss)
-│       ├── 💾 Save Reading → Firebase
-│       ├── 💊 Medicines → MedicinesActivity
-│       ├── 📜 History → HistoryActivity
-│       └── 🔗 Bluetooth → BluetoothConnectActivity
-├── 🔗 Bluetooth → BluetoothConnectActivity
-├── 🎮 Motion Control → MotionControlActivity
-│   ├── 📡 Enter Phone Mode (LINE → PHONE handshake)
-│   ├── ⬆️⬇️⬅️➡️ Direction Pad
-│   └── 🛑 Stop + safe exit sequence
-└── 🖥️ TFT Remote → TftRemoteActivity
-    ├── 🏠 Main Panel (6 robot modes)
-    ├── 💊 Medicine Panel (numeric keypad)
-    ├── 👁️ Vision Panel (camera D-pad)
-    └── ➕ More Panel (Vision, Vein Finder, Stress Test)
+
+## Serial Protocol
+
+The STM32 sends newline-terminated key-value packets through the HC-05 connection.
+
+Example:
+
+```text
+TYPE=VITALS,PATIENT=001,BPM=82,SPO2=97,BREATH=540,SMOKE=120,MED=300,ALERT=NONE
 ```
 
----
+| Field | Type | Description |
+| --- | --- | --- |
+| `TYPE` | String | Packet type. The app processes `VITALS`. |
+| `PATIENT` | String | Patient ID. Falls back to the selected patient if missing. |
+| `BPM` | Integer | Heart rate in beats per minute. |
+| `SPO2` | Integer | Blood oxygen saturation percentage. |
+| `BREATH` | Integer | Respiration sensor value. |
+| `SMOKE` | Integer | Smoke sensor ADC value. |
+| `MED` | Integer | Medicine timer in seconds. Values outside 0-600 are treated as 0. |
+| `ALERT` | String | Alert state such as `NONE`, `MED`, `SMOKE`, or `FIRE`. |
 
-## 🗂️ Firebase Data Structure
+Malformed or unsupported packets are ignored instead of crashing the app.
 
-```
+## App-to-Robot Commands
+
+### Motion
+
+| Command | Purpose |
+| --- | --- |
+| `CMD=MOTION,MODE=PHONE` | Enter phone-control mode. |
+| `CMD=MOTION,MODE=LINE` | Return to line-tracking mode. |
+| `CMD=MOTION,DIR=FWD` | Move forward. |
+| `CMD=MOTION,DIR=BACK` | Move backward. |
+| `CMD=MOTION,DIR=LEFT` | Turn left. |
+| `CMD=MOTION,DIR=RIGHT` | Turn right. |
+| `CMD=MOTION,DIR=STOP` | Stop movement. |
+
+### Alerts
+
+| Command | Purpose |
+| --- | --- |
+| `CMD=MED,ALERT=OFF` | Dismiss medicine alert. |
+| `CMD=SMOKE,ALERT=OFF` | Dismiss smoke alert. |
+
+### TFT UI
+
+| Command | Purpose |
+| --- | --- |
+| `CMD=UI,KEY=1` to `CMD=UI,KEY=8` | Select TFT menu options. |
+| `CMD=UI,KEY=0` | Open or return through the extended TFT menu flow. |
+| `CMD=UI,KEY=A` | Confirm or select. |
+| `CMD=UI,KEY=B` | Clear input. |
+| `CMD=UI,KEY=C` | Back. |
+| `CMD=UI,KEY=D` | Exit current view. |
+| `CMD=UI,KEY=CAM_UP` | Vision control: up. |
+| `CMD=UI,KEY=CAM_DOWN` | Vision control: down. |
+| `CMD=UI,KEY=CAM_LEFT` | Vision control: left. |
+| `CMD=UI,KEY=CAM_RIGHT` | Vision control: right. |
+
+Commands are sent with a trailing newline by the Android app.
+
+## Health Thresholds
+
+| Condition | App status |
+| --- | --- |
+| Active alert is not `NONE` | Critical Alert |
+| SpO2 below 92 | Critical Alert |
+| Smoke value 3000 or higher | Critical Alert |
+| SpO2 below 95 | Needs Attention |
+| Smoke value from 2000 to 2999 | Needs Attention |
+| BPM below 55 or above 110 | Needs Attention |
+| Otherwise | Stable |
+
+## Firebase Data Model
+
+```text
 robocare/
-└── patients/
-    └── {patientId}/
-        ├── patientId: "001"
-        ├── name: "John Doe"
-        ├── age: "65"
-        ├── room: "A12"
-        ├── notes: "Heart condition"
-        ├── createdAt: 1714600000000
-        ├── latest/
-        │   ├── bpm: 82
-        │   ├── spo2: 97
-        │   ├── breath: 540
-        │   ├── smoke: 120
-        │   ├── med: 300
-        │   ├── alert: "NONE"
-        │   └── timestamp: 1714600123456
-        ├── readings/
-        │   └── {pushId}/
-        │       └── ... (same fields as latest)
-        └── medicines/
-            └── {medicineId}/
-                ├── name: "Aspirin"
-                ├── dose: "100mg"
-                ├── notes: "After meals"
-                ├── active: true
-                └── createdAt: 1714600000000
+`-- patients/
+    `-- {patientId}/
+        |-- patientId
+        |-- name
+        |-- age
+        |-- room
+        |-- notes
+        |-- createdAt
+        |-- latest/
+        |   |-- bpm
+        |   |-- spo2
+        |   |-- breath
+        |   |-- smoke
+        |   |-- med
+        |   |-- alert
+        |   `-- timestamp
+        |-- readings/
+        |   `-- {readingId}/
+        `-- medicines/
+            `-- {medicineId}/
+                |-- name
+                |-- dose
+                |-- notes
+                |-- active
+                `-- createdAt
 ```
 
----
+## Permissions
 
-## ⚠️ Health Thresholds
+The app requests:
 
-| Condition | Threshold | Severity |
-|-----------|-----------|----------|
-| SpO₂ < 92% | Critical | 🔴 Critical Alert |
-| Smoke ≥ 3000 | Critical | 🔴 Critical Alert |
-| Active alert ≠ NONE | Critical | 🔴 Critical Alert |
-| SpO₂ < 95% | Warning | 🟠 Needs Attention |
-| Smoke 2000–3000 | Warning | 🟠 Needs Attention |
-| BPM < 55 or > 110 | Warning | 🟠 Needs Attention |
-| All normal | Stable | 🟢 Stable |
+- `INTERNET` for Firebase.
+- `BLUETOOTH_CONNECT` for Android 12 and newer.
+- `BLUETOOTH`, `BLUETOOTH_ADMIN`, and `ACCESS_FINE_LOCATION` for Android 11 and older Bluetooth discovery/connection behavior.
 
----
+## Notes
 
-## 🤝 Contributing
+- `google-services.json` is intentionally not committed. Use your own Firebase project configuration.
+- The app is designed for physical-device testing because emulator Bluetooth support is limited.
+- The current serial protocol expects newline-terminated packets.
 
-Contributions are welcome! Please:
+## License
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -m 'feat: add your feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
-> **Note:** Make sure to create your own Firebase project and add your own `google-services.json` file before building. See the [setup instructions](#setup) above.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-Copyright © 2026 Yasmine Ismail Hamed
+Copyright (c) 2026 Yasmine Ismail Hamed
